@@ -12,10 +12,16 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  Alert, 
   useWindowDimensions,
   View,
   Image,
+  SafeAreaView,
 } from 'react-native';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+// ... y en react-native: import { Alert, ... } from 'react-native';
 
 import AsistenteIA from './AsistenteIA';
 
@@ -40,10 +46,28 @@ const productos = [
 export default function App() {
   const [pestana, setPestana] = useState('original');
   const [mostrarIA, setMostrarIA] = useState(false);
-  
+
+    // --- ESTADOS DEL FORMULARIO DE REGISTRO ---
+  const [esRegistro, setEsRegistro] = useState(false); // Para alternar entre Login y Registro
+  const [correo, setCorreo] = useState('');
+  const [password, setPassword] = useState('');
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [direccion, setDireccion] = useState('');
+  const [verPassword, setVerPassword] = useState(false); // Para el ojito de la contraseña
+  const [mostrarHistorial, setMostrarHistorial] = useState(false);
   // ESTADOS DEL CARRITO
   const [carrito, setCarrito] = useState([]);
   const [mostrarCarrito, setMostrarCarrito] = useState(false);
+
+    // Calcular total (convirtiendo el string de precio "$4.500" a número 4500)
+  const calcularTotal = () => {
+    return carrito.reduce((total, prod) => {
+      const precioNum = parseInt(prod.precio.replace(/[^0-9]/g, ''), 10);
+      return total + (isNaN(precioNum) ? 0 : precioNum);
+    }, 0);
+  };
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
   // Agregar producto
   const agregarAlCarrito = (producto) => {
@@ -55,24 +79,251 @@ export default function App() {
     setCarrito((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Calcular total (convirtiendo el string de precio "$4.500" a número 4500)
-  const calcularTotal = () => {
-    return carrito.reduce((total, prod) => {
-      const precioNum = parseInt(prod.precio.replace(/[^0-9]/g, ''), 10);
-      return total + (isNaN(precioNum) ? 0 : precioNum);
-    }, 0);
+
+    // --- ESTADOS DEL PERFIL Y LOGIN ---
+  const [mostrarPerfil, setMostrarPerfil] = useState(false);
+  const [usuario, setUsuario] = useState(null);
+  const [nombreInput, setNombreInput] = useState('');
+  const [historialCompras, setHistorialCompras] = useState([]);
+
+  // Cargar datos guardados al abrir la app
+    useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const user = await AsyncStorage.getItem('@d1_usuario_completo'); // 👈 Usamos la MISMA llave
+        const historial = await AsyncStorage.getItem('@d1_historial');
+        if (user) setUsuario(JSON.parse(user)); 
+        if (historial) setHistorialCompras(JSON.parse(historial));
+      } catch (e) {
+        console.log('Error cargando datos', e);
+      }
+    };
+    cargarDatos();
+  }, []);
+
+    // Iniciar sesión (Simulado)
+  const handleLogin = async () => {
+    if (!correo.trim() || !password.trim()) return Alert.alert('Error', 'Llena todos los campos');
+    
+    const usuarioGuardado = await AsyncStorage.getItem('@d1_usuario_completo');
+    
+    if (usuarioGuardado) {
+      const userObj = JSON.parse(usuarioGuardado);
+      if (userObj.correo === correo) {
+        setUsuario(userObj); // Inicia sesión correctamente
+      } else {
+        Alert.alert('Error', 'Correo no registrado');
+      }
+    } else {
+      Alert.alert('Error', 'No hay ninguna cuenta registrada con este correo.');
+    }
   };
 
+  // Registrar usuario
+   const handleRegistro = async () => {
+    if (!nombre.trim() || !correo.trim() || !password.trim()) return Alert.alert('Error', 'Llena los campos obligatorios');
+    
+    const nuevoUsuario = { nombre, apellido, telefono, direccion, correo };
+    setUsuario(nuevoUsuario);
+    await AsyncStorage.setItem('@d1_usuario_completo', JSON.stringify(nuevoUsuario));
+    Alert.alert('¡Bienvenido!', 'Tu cuenta ha sido creada exitosamente.');
+  };
+
+  // Cerrar sesión
+  const handleLogout = async () => {
+    setUsuario(null);
+  };
+
+  // Pagar (Guarda la compra en el historial)
+  // Pagar (Valida si hay sesión iniciada)
+    const handlePagar = async () => {
+    if (carrito.length === 0) return;
+
+    // Validar si hay sesión iniciada
+    if (!usuario) {
+      return Alert.alert(
+        'Inicia sesión', 
+        'Para poder finalizar tu compra, primero debes iniciar sesión o crear una cuenta.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Ir a mi Perfil', onPress: () => { setMostrarCarrito(false); setMostrarPerfil(true); } }
+        ]
+      );
+    }
+    
+    // Si ya hay usuario, procede con el pago
+    const nuevaCompra = {
+      fecha: new Date().toLocaleDateString(),
+      total: calcularTotal().toLocaleString('es-CO'),
+      items: carrito.length
+    };
+    const nuevoHistorial = [...historialCompras, nuevaCompra];
+    
+    setHistorialCompras(nuevoHistorial);
+    await AsyncStorage.setItem('@d1_historial', JSON.stringify(nuevoHistorial));
+    
+    setCarrito([]);
+    setMostrarCarrito(false);
+    Alert.alert('¡Compra exitosa!', 'Revisa tu historial en el Perfil.');
+  };
+
+
+
+  // --- PANTALLA DE MIS COMPRAS ---
+  if (mostrarHistorial) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Pressable onPress={() => setMostrarHistorial(false)} style={styles.botonVolverCarrito}>
+            <Text style={styles.textoVolver}>← Volver al catálogo</Text>
+          </Pressable>
+          <Text style={styles.titulo}>Mis Compras</Text>
+        </View>
+
+        {historialCompras.length === 0 ? (
+          <View style={styles.carritoVacio}>
+            <Text style={{ fontSize: 40, marginBottom: 10 }}>🛒</Text>
+            <Text style={styles.textoVacio}>Aún no tienes compras registradas.</Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={{ padding: 20 }}>
+            {historialCompras.slice().reverse().map((compra, index) => (
+              <View key={index} style={styles.tarjetaHistorial}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.fechaHistorial}>📅 {compra.fecha}</Text>
+                  <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                    <Text style={{ color: '#4CAF50', fontWeight: 'bold', fontSize: 10 }}>COMPLETADA</Text>
+                  </View>
+                </View>
+                <Text style={styles.totalHistorial}>Total: ${compra.total}</Text>
+                <Text style={styles.itemsHistorial}>{compra.items} productos</Text>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  
+     // --- PANTALLA DE PERFIL Y LOGIN (ESTILO D1) ---
+  if (mostrarPerfil) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {/* Header simple para volver */}
+        <View style={styles.headerLogin}>
+          <Pressable onPress={() => {
+ if (esRegistro) {
+    setEsRegistro(false); // Si está en registro, lo devuelve al login
+  } else {
+    setMostrarPerfil(false); // Si está en login, cierra el perfil y va al catálogo
+  }
+}}>
+  <Text style={{ fontSize: 24, color: '#1A1A1A', fontWeight: 'bold' }}>←</Text>
+</Pressable>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollLogin}>
+          
+          {/* Si el usuario YA inició sesión, mostramos su perfil y compras */}
+                    {/* Si el usuario YA inició sesión, mostramos su perfil */}
+          {usuario ? (
+            <>
+              <View style={styles.tarjetaPerfil}>
+                <Text style={styles.saludoLogin}>¡Hola, {usuario.nombre}! 👋</Text>
+                <Text style={styles.correoLogin}>📧 {usuario.correo}</Text>
+                {usuario.telefono ? <Text style={styles.correoLogin}>📱 {usuario.telefono}</Text> : null}
+                {usuario.direccion ? <Text style={styles.correoLogin}>🏠 {usuario.direccion}</Text> : null}
+              </View>
+
+              <View style={styles.resumenCompras}>
+                <Text style={styles.textoResumenCompras}>🛍️ Tienes {historialCompras.length} compras realizadas.</Text>
+                <Pressable onPress={() => { setMostrarPerfil(false); setMostrarHistorial(true); }}>
+                  <Text style={styles.enlaceResumen}>Ver todas mis compras</Text>
+                </Pressable>
+              </View>
+
+              <Pressable style={styles.botonCerrarSesion} onPress={handleLogout}>
+                <Text style={styles.textoCerrarSesion}>Cerrar Sesión</Text>
+              </Pressable>
+            </>
+          ) : ( 
+            
+            // SI NO HA INICIADO SESIÓN, MOSTRAMOS EL LOGIN O REGISTRO
+            <>
+              <Text style={styles.tituloBienvenida}>
+                {esRegistro ? 'Crear tu cuenta' : 'Bienvenido a D1'}
+              </Text>
+              <Text style={styles.subtituloBienvenida}>
+                {esRegistro ? 'Ingresa tus datos para registrarte' : 'Ingresa tu correo y contraseña para continuar'}
+              </Text>
+
+              {/* FORMULARIO DE REGISTRO (Solo aparece si esRegistro es true) */}
+              {esRegistro && (
+                <>
+                  <Text style={styles.labelInput}>Nombre*</Text>
+                  <TextInput style={styles.inputD1} placeholder="Ej: Nombre" placeholderTextColor="#A0A0A0" value={nombre} onChangeText={setNombre} />
+                  
+                  <Text style={styles.labelInput}>Apellido*</Text>
+                  <TextInput style={styles.inputD1} placeholder="Ej: Apellido" placeholderTextColor="#A0A0A0" value={apellido} onChangeText={setApellido} />
+                  
+                  <Text style={styles.labelInput}>Número de teléfono*</Text>
+                  <TextInput style={styles.inputD1} placeholder="Ej: 3001234567" placeholderTextColor="#A0A0A0" keyboardType="phone-pad" value={telefono} onChangeText={setTelefono} />
+                  
+                  <Text style={styles.labelInput}>Dirección de entrega*</Text>
+                  <TextInput style={styles.inputD1} placeholder="Ej: Calle 10 # 5-20" placeholderTextColor="#A0A0A0" value={direccion} onChangeText={setDireccion} />
+                </>
+              )}
+
+              {/* CORREO Y CONTRASEÑA (Van tanto en Login como en Registro) */}
+              <Text style={styles.labelInput}>Correo electrónico*</Text>
+              <TextInput style={styles.inputD1} placeholder="tucorreo@ejemplo.com"  placeholderTextColor="#A0A0A0" keyboardType="email-address" autoCapitalize="none" value={correo} onChangeText={setCorreo} />
+
+              <Text style={styles.labelInput}>Contraseña*</Text>
+              <View style={styles.contenedorPassword}>
+                <TextInput 
+                  style={{ flex: 1, padding: 15 }} 
+                  placeholder="Contraseña" placeholderTextColor="#A0A0A0"
+                  secureTextEntry={!verPassword} 
+                  value={password} 
+                  onChangeText={setPassword} 
+                />
+                <Pressable style={{ padding: 15 }} onPress={() => setVerPassword(!verPassword)}>
+                  <Text style={{ fontSize: 18 }}>{verPassword ? '🙈' : '👁️'}</Text>
+                </Pressable>
+              </View>
+
+              <Text style={styles.avisoTerminos}>
+                Al crear mi perfil, autorizo de manera previa, expresa e informada a D1 S.A.S. a tratar mis datos personales.
+              </Text>
+
+              {/* BOTÓN PRINCIPAL */}
+              <Pressable style={styles.botonRojoD1} onPress={esRegistro ? handleRegistro : handleLogin}>
+                <Text style={styles.textoBotonRojo}>{esRegistro ? 'Registrarme' : 'Iniciar sesión'}</Text>
+              </Pressable>
+
+              {/* ENLACE PARA CAMBIAR ENTRE LOGIN Y REGISTRO */}
+              <Pressable onPress={() => setEsRegistro(!esRegistro)} style={{ marginTop: 20, alignItems: 'center' }}>
+                <Text style={styles.textoEnlaceD1}>
+                  {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿Es tu primera vez en D1? Crea tu cuenta'}
+                </Text>
+              </Pressable>
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
   // Renderizar pantalla de Carrito si está activo
   if (mostrarCarrito) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.header}>
           <Pressable onPress={() => setMostrarCarrito(false)} style={styles.botonVolverCarrito}>
             <Text style={styles.textoVolver}>← Volver al catálogo</Text>
           </Pressable>
           <Text style={styles.titulo}>Mi Carrito</Text>
-        </View>
+        </SafeAreaView>
 
         {carrito.length === 0 ? (
           <View style={styles.carritoVacio}>
@@ -103,37 +354,72 @@ export default function App() {
               <Text style={styles.textoTotal}>
                 Total: ${calcularTotal().toLocaleString('es-CO')}
               </Text>
-              <Pressable style={styles.botonPagar} onPress={() => alert('¡Compra realizada con éxito!')}>
+              <Pressable style={styles.botonPagar} onPress={handlePagar}>
                 <Text style={styles.textoPagar}>Pagar</Text>
-              </Pressable>
+            </Pressable>
             </View>
           </View>
         )}
-      </View>
+       </SafeAreaView>
     );
   }
 
   // Renderizar Catálogo normal
   return (
-    <View style={styles.container}>
-      {/* Encabezado Mejorado con Carrito */}
-      <View style={styles.header}>
-        <View style={styles.headerLogo}>
-          <Text style={styles.headerLogoTexto}>D1</Text>
-        </View>
-        <View style={styles.headerInfo}>
-          <Text style={styles.titulo}>Catálogo D1</Text>
-          <Text style={styles.subtitulo}>Sesión 10 · IA Local + Carrito</Text>
-        </View>
-        <Pressable style={styles.carritoContenedor} onPress={() => setMostrarCarrito(true)}>
-          <Text style={styles.carritoIcono}>🛒</Text>
-          {carrito.length > 0 && (
-            <View style={styles.carritoBadge}>
-              <Text style={styles.carritoBadgeTexto}>{carrito.length}</Text>
+    <SafeAreaView style={styles.container}>
+            {/* --- NUEVA CABECERA ESTILO D1 (Agregada) --- */}
+      <View style={styles.d1Header}>
+        <View style={styles.d1FilaSuperior}>
+          <View style={styles.d1Logo}>
+            <Text style={styles.d1LogoTexto}>D1</Text>
+          </View>
+
+          <View style={styles.d1Buscador}>
+            <Text style={styles.d1BuscadorTexto}>¿Qué estás buscando?</Text>
+            <View style={styles.d1BuscadorIcono}>
+              <Text style={{color: 'white', fontWeight: 'bold'}}>🔍</Text>
             </View>
-          )}
-        </Pressable>
+          </View>
+          
+          <Pressable style={styles.d1Carrito} onPress={() => setMostrarCarrito(true)}>
+            <Text style={{fontSize: 20}}>🛒</Text>
+            <Text style={styles.d1CarritoTexto}>${calcularTotal().toLocaleString('es-CO')}</Text>
+          </Pressable>
+        </View>
+       
+       
+         <View style={styles.d1FilaInferior}>
+          <Pressable style={styles.d1IconoNav}>
+            <Text style={styles.d1Icono}>🏪</Text>
+            <Text style={styles.d1IconoTexto}>Tiendas</Text>
+          </Pressable>
+          
+          <Pressable style={styles.d1IconoNav} onPress={() => setMostrarHistorial(true)}>
+            <Text style={styles.d1Icono}>📝</Text>
+            <Text style={styles.d1IconoTexto}>Mis Compras</Text>
+          </Pressable>
+          
+          <Pressable style={styles.d1IconoNav} onPress={() => setMostrarPerfil(true)}>
+            <Text style={styles.d1Icono}>👤</Text>
+            <Text style={styles.d1IconoTexto}>Perfil</Text>
+          </Pressable>
+        </View>
       </View>
+      {/* --- FIN NUEVA CABECERA --- */}
+      
+           {/* Header original (Oculto pero conservado en el código) */}
+      {false && (
+        <View style={styles.header}>
+          <View style={styles.headerLogo}>
+            <Text style={styles.headerLogoTexto}>D1</Text>
+          </View>
+          <View style={styles.headerInfo}>
+            <Text style={styles.titulo}>Catálogo D1</Text>
+            <Text style={styles.subtitulo}>Sesión 10 · IA Local + Carrito</Text>
+          </View>
+          {/* Tu carrito viejo... */}
+        </View>
+      )}
 
       {/* Botón para alternar IA */}
       <Pressable 
@@ -184,7 +470,7 @@ export default function App() {
           {pestana === 'sensores' && <PantallaSensores onAgregar={agregarAlCarrito} />}
         </>
       )}
-    </View>
+     </SafeAreaView>
   );
 }
 // Dentro de App()
@@ -594,7 +880,7 @@ function TarjetaProducto({ item, onAgregar }) {
 
 const styles = StyleSheet.create({
   // ... (Mismos estilos que ya tenías)
-  container: { flex: 1, paddingTop: 80, backgroundColor: '#F5F7FA' },
+  container: { flex: 1, paddingTop: 0, backgroundColor: '#F5F7FA' },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 20 },
   headerLogo: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#D32F2F', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   headerLogoTexto: { color: 'white', fontSize: 18, fontWeight: 'bold' },
@@ -709,5 +995,120 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#f0f0f0',
   },
+    /* --- ESTILOS CABECERA ESTILO D1 --- */
+  d1Header: {
+    backgroundColor: 'white',
+    paddingTop: 10, // O 0, para que SafeAreaView haga su trabajo
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E9EF',
+    marginBottom: 10,
+  },
+  d1FilaSuperior: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    gap: 10,
+  },
+  d1Logo: {
+    backgroundColor: '#D32F2F',
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  d1LogoTexto: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  d1Buscador: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+    borderRadius: 20,
+    paddingLeft: 15,
+    height: 40,
+    justifyContent: 'space-between',
+  },
+  d1BuscadorTexto: {
+    color: '#999',
+    fontSize: 14,
+  },
+  d1BuscadorIcono: {
+    backgroundColor: '#D32F2F',
+    width: 35,
+    height: 35,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 3,
+  },
+  d1Carrito: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  d1CarritoTexto: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#D32F2F',
+    marginTop: -2,
+  },
+  d1FilaInferior: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E9EF',
+    paddingTop: 10,
+  },
+  d1IconoNav: {
+    alignItems: 'center',
+  },
+  d1Icono: {
+    fontSize: 18,
+    marginBottom: 2,
+  },
+  d1IconoTexto: {
+    fontSize: 11,
+    color: '#4A5568',
+    fontWeight: '600',
+  },
+
+    /* ESTILOS DEL PERFIL */
+  saludo: { fontSize: 24, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 10 },
+  botonCerrarSesion: { backgroundColor: '#FFEBEE', padding: 10, borderRadius: 8, alignSelf: 'flex-start', marginTop: 10 },
+  textoCerrarSesion: { color: '#D32F2F', fontWeight: 'bold' },
+  tituloLogin: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  inputLogin: { backgroundColor: 'white', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#ccc', marginBottom: 15 },
+  botonLogin: { backgroundColor: '#D32F2F', padding: 15, borderRadius: 10, alignItems: 'center' },
+  textoBotonLogin: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  subtituloHistorial: { fontSize: 20, fontWeight: 'bold', marginTop: 30, marginBottom: 15, color: '#1A1A1A' },
+  tarjetaHistorial: { backgroundColor: 'white', padding: 15, borderRadius: 10, marginBottom: 10, borderLeftWidth: 4, borderLeftColor: '#4CAF50' },
+  fechaHistorial: { fontSize: 12, color: '#666', marginBottom: 5 },
+  totalHistorial: { fontSize: 18, fontWeight: 'bold', color: '#D32F2F' },
+  itemsHistorial: { fontSize: 14, color: '#4A5568', marginTop: 5 },
+
+    /* ESTILOS LOGIN ESTILO D1 */
+  headerLogin: { paddingTop: 50, paddingHorizontal: 20, paddingBottom: 10 },
+  scrollLogin: { paddingHorizontal: 20, paddingBottom: 40 },
+  tituloBienvenida: { fontSize: 28, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 8 },
+  subtituloBienvenida: { fontSize: 15, color: '#666', marginBottom: 25, lineHeight: 22 },
+  labelInput: { fontSize: 14, color: '#1A1A1A', marginBottom: 8, fontWeight: '500' },
+  inputD1: { borderWidth: 1, borderColor: '#ccc', borderRadius: 25, padding: 15, fontSize: 15, marginBottom: 18, backgroundColor: 'white' },
+  contenedorPassword: { flexDirection: 'row', borderWidth: 1, borderColor: '#ccc', borderRadius: 25, marginBottom: 18, backgroundColor: 'white', alignItems: 'center' },
+  avisoTerminos: { fontSize: 12, color: '#666', lineHeight: 18, marginBottom: 25 },
+  botonRojoD1: { backgroundColor: '#D32F2F', padding: 16, borderRadius: 25, alignItems: 'center' },
+  textoBotonRojo: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  textoEnlaceD1: { color: '#D32F2F', fontSize: 14, fontWeight: '600' },
+  saludoLogin: { fontSize: 24, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 5 },
+  correoLogin: { fontSize: 14, color: '#666', marginBottom: 15 },
+
+  tarjetaPerfil: { backgroundColor: 'white', padding: 20, borderRadius: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, marginBottom: 20 },
+  resumenCompras: { backgroundColor: '#E3F2FD', padding: 20, borderRadius: 15, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#BBDEFB' },
+  textoResumenCompras: { fontSize: 16, color: '#1976D2', fontWeight: 'bold', marginBottom: 10 },
+  enlaceResumen: { fontSize: 14, color: '#D32F2F', fontWeight: 'bold', textDecorationLine: 'underline' },
 
 });

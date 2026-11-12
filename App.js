@@ -1,26 +1,28 @@
 /* ============================================================
-CATÁLOGO D1 — Versión Final (IA + Carrito + UX + Sensores)
-Mejoras: Logo imagen + Chatbot flotante tipo Modal
-============================================================ */
+   CATÁLOGO D1 — Versión Final (IA + Carrito + UX + Sensores)
+   Mejoras unificadas:
+   - PWA: detección online/offline + banner "Sin conexión"
+   - Logo en imagen + Chatbot flotante tipo Modal
+   ============================================================ */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Accelerometer } from 'expo-sensors';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   FlatList,
+  Image,
+  Modal,
   Platform,
   Pressable,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  Alert,
   useWindowDimensions,
   View,
-  Image,
-  SafeAreaView,
-  Modal,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import AsistenteIA from './AsistenteIA';
 
 const productos = [
@@ -44,6 +46,15 @@ const productos = [
 export default function App() {
   const [pestana, setPestana] = useState('original');
   const [mostrarChatIA, setMostrarChatIA] = useState(false);
+
+  // ============================================================
+  // AGREGADO — ESTADO OFFLINE (mejora PWA - Valery)
+  // true = hay internet | false = sin conexión
+  // ============================================================
+  const [estaOnline, setEstaOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
   // --- ESTADOS DEL FORMULARIO DE REGISTRO ---
   const [esRegistro, setEsRegistro] = useState(false);
   const [correo, setCorreo] = useState('');
@@ -54,7 +65,8 @@ export default function App() {
   const [direccion, setDireccion] = useState('');
   const [verPassword, setVerPassword] = useState(false);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
-  // ESTADOS DEL CARRITO
+
+  // --- ESTADOS DEL CARRITO ---
   const [carrito, setCarrito] = useState([]);
   const [mostrarCarrito, setMostrarCarrito] = useState(false);
 
@@ -81,6 +93,7 @@ export default function App() {
   const [nombreInput, setNombreInput] = useState('');
   const [historialCompras, setHistorialCompras] = useState([]);
 
+  // Cargar datos guardados al abrir la app
   useEffect(() => {
     const cargarDatos = async () => {
       try {
@@ -93,6 +106,23 @@ export default function App() {
       }
     };
     cargarDatos();
+  }, []);
+
+  // ============================================================
+  // AGREGADO — Detectar online / offline (mejora PWA - Valery)
+  // ============================================================
+  useEffect(() => {
+    const alConectar = () => setEstaOnline(true);
+    const alDesconectar = () => setEstaOnline(false);
+
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('online', alConectar);
+      window.addEventListener('offline', alDesconectar);
+      return () => {
+        window.removeEventListener('online', alConectar);
+        window.removeEventListener('offline', alDesconectar);
+      };
+    }
   }, []);
 
   const handleLogin = async () => {
@@ -130,14 +160,14 @@ export default function App() {
         'Para poder finalizar tu compra, primero debes iniciar sesión o crear una cuenta.',
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Ir a mi Perfil', onPress: () => { setMostrarCarrito(false); setMostrarPerfil(true); } }
+          { text: 'Ir a mi Perfil', onPress: () => { setMostrarCarrito(false); setMostrarPerfil(true); } },
         ]
       );
     }
     const nuevaCompra = {
       fecha: new Date().toLocaleDateString(),
       total: calcularTotal().toLocaleString('es-CO'),
-      items: carrito.length
+      items: carrito.length,
     };
     const nuevoHistorial = [...historialCompras, nuevaCompra];
     setHistorialCompras(nuevoHistorial);
@@ -351,6 +381,18 @@ export default function App() {
         </View>
       </View>
 
+      {/* ============================================================
+          AGREGADO — Banner offline (mejora PWA - Valery)
+          Solo se muestra cuando no hay internet
+          ============================================================ */}
+      {!estaOnline && (
+        <View style={{ backgroundColor: '#FFF3E0', padding: 10, alignItems: 'center' }}>
+          <Text style={{ color: '#E65100', fontWeight: 'bold', fontSize: 13 }}>
+            📡 Sin conexión — modo offline activo
+          </Text>
+        </View>
+      )}
+
       {/* Header original oculto (conservado) */}
       {false && (
         <View style={styles.header}>
@@ -399,10 +441,7 @@ export default function App() {
       {pestana === 'sensores' && <PantallaSensores onAgregar={agregarAlCarrito} />}
 
       {/* --- BOTÓN FLOTANTE CHATBOT (FAB) --- */}
-      <Pressable
-        style={styles.fabChat}
-        onPress={() => setMostrarChatIA(true)}
-      >
+      <Pressable style={styles.fabChat} onPress={() => setMostrarChatIA(true)}>
         <Text style={styles.fabChatIcon}>🤖</Text>
       </Pressable>
 
@@ -437,10 +476,10 @@ export default function App() {
 // --- PANTALLA ORIGINAL ---
 function PantallaOriginal({ onAgregar }) {
   const [categoriaActiva, setCategoriaActiva] = useState('Todos');
-  const categorias = ['Todos', ...new Set(productos.map(p => p.categoria))];
+  const categorias = ['Todos', ...new Set(productos.map((p) => p.categoria))];
   const productosFiltrados = categoriaActiva === 'Todos'
     ? productos
-    : productos.filter(p => p.categoria === categoriaActiva);
+    : productos.filter((p) => p.categoria === categoriaActiva);
 
   return (
     <View style={{ flex: 1 }}>
@@ -463,9 +502,7 @@ function PantallaOriginal({ onAgregar }) {
         data={productosFiltrados}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listaContenido}
-        renderItem={({ item }) => (
-          <TarjetaProducto item={item} onAgregar={onAgregar} />
-        )}
+        renderItem={({ item }) => <TarjetaProducto item={item} onAgregar={onAgregar} />}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', marginTop: 20, color: '#666' }}>
             No hay productos en esta categoría.
@@ -520,9 +557,7 @@ function PantallaAdaptativa({ onAgregar }) {
           <Text style={styles.textoResumen}>Columnas: {columnas}</Text>
         </View>
       </View>
-      <Text style={styles.informacionPantalla}>
-        Ancho: {Math.round(width)} px
-      </Text>
+      <Text style={styles.informacionPantalla}>Ancho: {Math.round(width)} px</Text>
       <FlatList
         key={`lista-${columnas}`}
         data={productos}
@@ -903,67 +938,17 @@ const styles = StyleSheet.create({
   logoImagenHeader: { width: 40, height: 40, resizeMode: 'contain' },
 
   /* --- FAB CHATBOT FLOTANTE --- */
-  fabChat: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#D32F2F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-    zIndex: 100,
-  },
+  fabChat: { position: 'absolute', bottom: 24, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: '#D32F2F', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 8, zIndex: 100 },
   fabChatIcon: { fontSize: 28 },
 
   /* --- MODAL CHATBOT --- */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
-    paddingBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 10,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E9EF',
-  },
-  modalHeaderIzq: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%', paddingBottom: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: -2 }, elevation: 10 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E5E9EF' },
+  modalHeaderIzq: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   modalLogo: { width: 32, height: 32, resizeMode: 'contain' },
   modalTitulo: { fontSize: 18, fontWeight: 'bold', color: '#1A1A1A' },
-  modalCerrar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F5F7FA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  modalCerrar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F7FA', alignItems: 'center', justifyContent: 'center' },
   modalCerrarTexto: { fontSize: 16, color: '#4A5568', fontWeight: 'bold' },
   modalBody: { flex: 1, maxHeight: '75%' },
 

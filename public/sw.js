@@ -3,7 +3,7 @@
    Este archivo permite que la app abra sin internet.
    ============================================================ */
 
-// Nombre del cache. Si cambias la lógica offline, sube la versión (v2, v3...)
+
 const CACHE_NAME = 'catalogo-d1-v1';
 
 // Archivos que se guardan en el primer uso (shell de la app)

@@ -48,7 +48,7 @@ export default function App() {
   const [mostrarChatIA, setMostrarChatIA] = useState(false);
 
   // ============================================================
-  // AGREGADO — ESTADO OFFLINE (mejora PWA - Valery)
+  // AGREGADO — ESTADO OFFLINE (mejora PWA)
   // true = hay internet | false = sin conexión
   // ============================================================
   const [estaOnline, setEstaOnline] = useState(
@@ -109,7 +109,7 @@ export default function App() {
   }, []);
 
   // ============================================================
-  // AGREGADO — Detectar online / offline (mejora PWA - Valery)
+  // AGREGADO — Detectar online / offline (mejora PWA)
   // ============================================================
   useEffect(() => {
     const alConectar = () => setEstaOnline(true);

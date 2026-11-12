@@ -3,7 +3,7 @@
   "name": "Tienda D1",
   "icons": [
     {
-      "src": "a/imagen192(1).png",
+      "src": "/imagen192.png",
       "type": "image/png",
       "sizes": "192x192"
     },

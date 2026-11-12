@@ -26,21 +26,21 @@ import {
 import AsistenteIA from './AsistenteIA';
 
 const productos = [
-  { id: '1', nombre: 'Leche Entera Latti', categoria: 'Lácteos', descripcion: 'Leche entera pasteurizada 1000ml', precio: '$3.100', imagen: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&q=80' },
-  { id: '2', nombre: 'Arroz Albar', categoria: 'Despensa', descripcion: 'Arroz estándar 500g', precio: '$1.650', imagen: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&q=80' },
-  { id: '3', nombre: 'Huevos Sol Naciente', categoria: 'Huevos', descripcion: 'Huevo tipo AA x12', precio: '$7.490', imagen: 'https://images.unsplash.com/photo-1506976785307-8732e854ad03?w=200&q=80' },
-  { id: '4', nombre: 'Pan Tajado Mantequilla', categoria: 'Panadería', descripcion: 'Pan tajado 450g', precio: '$3.850', imagen: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&q=80' },
-  { id: '5', nombre: 'Aceite Vegetal Imatá', categoria: 'Despensa', descripcion: 'Aceite vegetal 900ml', precio: '$6.750', imagen: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=200&q=80' },
-  { id: '6', nombre: 'Azúcar Blanca', categoria: 'Despensa', descripcion: 'Azúcar blanca 1000g', precio: '$3.300', imagen: 'https://images.unsplash.com/photo-1581441363689-1f3c3c414635?w=200&q=80' },
-  { id: '7', nombre: 'Café Viejo Molino', categoria: 'Bebidas', descripcion: 'Café tostado y molido 125g', precio: '$5.700', imagen: 'https://images.unsplash.com/photo-1559525839-b184a4d698c7?w=200&q=80' },
-  { id: '8', nombre: 'Chocolate De La Taza', categoria: 'Bebidas', descripcion: 'Chocolate de mesa 500g', precio: '$10.650', imagen: 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=200&q=80' },
-  { id: '9', nombre: 'Galletas Saltísimas', categoria: 'Snacks', descripcion: 'Galletas integrales 378g', precio: '$5.490', imagen: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=200&q=80' },
-  { id: '10', nombre: 'Spaghetti Doria', categoria: 'Despensa', descripcion: 'Pasta 250g + 10% extra', precio: '$2.100', imagen: 'https://images.unsplash.com/photo-1551462147-37885acc36f1?w=200&q=80' },
-  { id: '11', nombre: 'Atún El Navío', categoria: 'Enlatados', descripcion: 'Atún rallado en aceite 170g', precio: '$3.450', imagen: 'https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6?w=200&q=80' },
-  { id: '12', nombre: 'Frijol Rojo El Estío', categoria: 'Despensa', descripcion: 'Frijol rojo 500g', precio: '$3.690', imagen: 'https://images.unsplash.com/photo-1551462147-37885acc36f1?w=200&q=80' },
-  { id: '13', nombre: 'Lenteja El Estío', categoria: 'Despensa', descripcion: 'Lentejas 500g', precio: '$1.590', imagen: 'https://images.unsplash.com/photo-1515543904379-3d757afe72e4?w=200&q=80' },
-  { id: '14', nombre: 'Sal Refisal', categoria: 'Despensa', descripcion: 'Sal refinada 1000g', precio: '$2.900', imagen: 'https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?w=200&q=80' },
-  { id: '15', nombre: 'Harina Quicksy', categoria: 'Despensa', descripcion: 'Harina de trigo 500g', precio: '$1.700', imagen: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&q=80' },
+  { id: '1', nombre: 'Leche Entera Latti', categoria: 'Lácteos', descripcion: 'Leche entera pasteurizada 1000ml', precio: '$3.100', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/198962-1200-1200?v=639179630422500000&width=1200&height=1200&aspect=true' },
+  { id: '2', nombre: 'Arroz Albar', categoria: 'Despensa', descripcion: 'Arroz estándar 500g', precio: '$1.650', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/200594-1200-1200?v=639179664265570000&width=1200&height=1200&aspect=true' },
+  { id: '3', nombre: 'Huevos Sol Naciente', categoria: 'Huevos', descripcion: 'Huevo tipo AA x12', precio: '$7.490', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/199351-1200-1200?v=639179638216470000&width=1200&height=1200&aspect=true' },
+  { id: '4', nombre: 'Pan Tajado Mantequilla', categoria: 'Panadería', descripcion: 'Pan tajado 450g', precio: '$3.850', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/202462-1200-1200?v=639179728481330000&width=1200&height=1200&aspect=true' },
+  { id: '5', nombre: 'Aceite Vegetal Imatá', categoria: 'Despensa', descripcion: 'Aceite vegetal 900ml', precio: '$6.750', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/201946-1200-1200?v=639179698978470000&width=1200&height=1200&aspect=true' },
+  { id: '6', nombre: 'Azúcar Blanca', categoria: 'Despensa', descripcion: 'Azúcar blanca 1000g', precio: '$3.300', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/204384-1200-1200?v=639190439827730000&width=1200&height=1200&aspect=true' },
+  { id: '7', nombre: 'Café Viejo Molino', categoria: 'Bebidas', descripcion: 'Café tostado y molido 125g', precio: '$5.700', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/200598-1200-1200?v=639179664360900000&width=1200&height=1200&aspect=true' },
+  { id: '8', nombre: 'Chocolate De La Taza', categoria: 'Bebidas', descripcion: 'Chocolate de mesa 500g', precio: '$10.650', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/199885-1200-1200?v=639179648831400000&width=1200&height=1200&aspect=true' },
+  { id: '9', nombre: 'Galletas Saltísimas', categoria: 'Snacks', descripcion: 'Galletas integrales 378g', precio: '$5.490', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/202040-1200-1200?v=639179701430900000&width=1200&height=1200&aspect=true' },
+  { id: '10', nombre: 'Spaghetti Doria', categoria: 'Despensa', descripcion: 'Pasta 250g + 10% extra', precio: '$2.100', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/206437-1200-1200?v=639240370494200000&width=1200&height=1200&aspect=true' },
+  { id: '11', nombre: 'Atún El Navío', categoria: 'Enlatados', descripcion: 'Atún rallado en aceite 170g', precio: '$3.450', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/199584-1200-1200?v=639179642857870000&width=1200&height=1200&aspect=true' },
+  { id: '12', nombre: 'Frijol Rojo El Estío', categoria: 'Despensa', descripcion: 'Frijol rojo 500g', precio: '$3.690', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/205197-1200-1200?v=639202705383630000&width=1200&height=1200&aspect=true' },
+  { id: '13', nombre: 'Lenteja El Estío', categoria: 'Despensa', descripcion: 'Lentejas 500g', precio: '$1.590', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/198845-1200-1200?v=639179627775400000&width=1200&height=1200&aspect=true' },
+  { id: '14', nombre: 'Sal Refisal', categoria: 'Despensa', descripcion: 'Sal refinada 1000g', precio: '$2.900', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/200929-1200-1200?v=639179671225000000&width=1200&height=1200&aspect=true' },
+  { id: '15', nombre: 'Harina Quicksy', categoria: 'Despensa', descripcion: 'Harina de trigo 500g', precio: '$1.700', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/200172-1200-1200?v=639179655046300000&width=1200&height=1200&aspect=true' },
 ];
 
 export default function App() {

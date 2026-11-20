@@ -1,8 +1,5 @@
 /* ============================================================
    CATÁLOGO D1 — Versión Final (IA + Carrito + UX + Sensores)
-   Mejoras unificadas:
-   - PWA: detección online/offline + banner "Sin conexión"
-   - Logo en imagen + Chatbot flotante tipo Modal
    ============================================================ */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -47,15 +44,10 @@ export default function App() {
   const [pestana, setPestana] = useState('original');
   const [mostrarChatIA, setMostrarChatIA] = useState(false);
 
-  // ============================================================
-  // AGREGADO — ESTADO OFFLINE (mejora PWA)
-  // true = hay internet | false = sin conexión
-  // ============================================================
   const [estaOnline, setEstaOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
 
-  // --- ESTADOS DEL FORMULARIO DE REGISTRO ---
   const [esRegistro, setEsRegistro] = useState(false);
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
@@ -66,9 +58,14 @@ export default function App() {
   const [verPassword, setVerPassword] = useState(false);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
 
-  // --- ESTADOS DEL CARRITO ---
   const [carrito, setCarrito] = useState([]);
   const [mostrarCarrito, setMostrarCarrito] = useState(false);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
+
+  const [mostrarPerfil, setMostrarPerfil] = useState(false);
+  const [usuario, setUsuario] = useState(null);
+  const [historialCompras, setHistorialCompras] = useState([]);
+  const [busqueda, setBusqueda] = useState('');
 
   const calcularTotal = () => {
     return carrito.reduce((total, prod) => {
@@ -77,23 +74,9 @@ export default function App() {
     }, 0);
   };
 
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
+  const agregarAlCarrito = (producto) => setCarrito((prev) => [...prev, producto]);
+  const eliminarDelCarrito = (index) => setCarrito((prev) => prev.filter((_, i) => i !== index));
 
-  const agregarAlCarrito = (producto) => {
-    setCarrito((prev) => [...prev, producto]);
-  };
-
-  const eliminarDelCarrito = (index) => {
-    setCarrito((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // --- ESTADOS DEL PERFIL Y LOGIN ---
-  const [mostrarPerfil, setMostrarPerfil] = useState(false);
-  const [usuario, setUsuario] = useState(null);
-  const [nombreInput, setNombreInput] = useState('');
-  const [historialCompras, setHistorialCompras] = useState([]);
-
-  // Cargar datos guardados al abrir la app
   useEffect(() => {
     const cargarDatos = async () => {
       try {
@@ -108,9 +91,6 @@ export default function App() {
     cargarDatos();
   }, []);
 
-  // ============================================================
-  // AGREGADO — Detectar online / offline (mejora PWA)
-  // ============================================================
   useEffect(() => {
     const alConectar = () => setEstaOnline(true);
     const alDesconectar = () => setEstaOnline(false);
@@ -127,13 +107,18 @@ export default function App() {
 
   const handleLogin = async () => {
     if (!correo.trim() || !password.trim()) return Alert.alert('Error', 'Llena todos los campos');
+    
     const usuarioGuardado = await AsyncStorage.getItem('@d1_usuario_completo');
+    
     if (usuarioGuardado) {
       const userObj = JSON.parse(usuarioGuardado);
-      if (userObj.correo === correo) {
-        setUsuario(userObj);
+      
+      if (userObj.correo === correo && userObj.password === password) {
+        setUsuario(userObj); 
+        setCorreo('');
+        setPassword('');
       } else {
-        Alert.alert('Error', 'Correo no registrado');
+        Alert.alert('Error', 'Correo o contraseña incorrectos');
       }
     } else {
       Alert.alert('Error', 'No hay ninguna cuenta registrada con este correo.');
@@ -141,29 +126,67 @@ export default function App() {
   };
 
   const handleRegistro = async () => {
-    if (!nombre.trim() || !correo.trim() || !password.trim()) return Alert.alert('Error', 'Llena los campos obligatorios');
-    const nuevoUsuario = { nombre, apellido, telefono, direccion, correo };
-    setUsuario(nuevoUsuario);
+    if (!nombre.trim() || !correo.trim() || !password.trim()) {
+      return Alert.alert('Error', 'Llena los campos obligatorios (Nombre, Correo y Contraseña)');
+    }
+    
+    const nuevoUsuario = { nombre, apellido, telefono, direccion, correo, password };
     await AsyncStorage.setItem('@d1_usuario_completo', JSON.stringify(nuevoUsuario));
-    Alert.alert('¡Bienvenido!', 'Tu cuenta ha sido creada exitosamente.');
+    
+    if (Platform.OS === 'web') {
+      window.alert('¡Cuenta creada exitosamente! Ahora puedes iniciar sesión.');
+    } else {
+      Alert.alert('¡Registro exitoso!', 'Tu cuenta ha sido creada exitosamente. Ahora puedes iniciar sesión.');
+    }
+    
+    setNombre('');
+    setApellido('');
+    setTelefono('');
+    setDireccion('');
+    setCorreo('');
+    setPassword('');
+    
+    setEsRegistro(false); 
   };
 
   const handleLogout = async () => {
     setUsuario(null);
+    setHistorialCompras([]); 
+    setCarrito([]); 
+    
+    setCorreo('');
+    setPassword('');
+    setNombre('');
+    setApellido('');
+    setTelefono('');
+    setDireccion('');
+    
+    // 🛑 NO BORRAMOS EL HISTORIAL DE ASYNCSTORAGE
   };
 
   const handlePagar = async () => {
     if (carrito.length === 0) return;
+
     if (!usuario) {
-      return Alert.alert(
-        'Inicia sesión',
-        'Para poder finalizar tu compra, primero debes iniciar sesión o crear una cuenta.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Ir a mi Perfil', onPress: () => { setMostrarCarrito(false); setMostrarPerfil(true); } },
-        ]
-      );
+      if (Platform.OS === 'web') {
+        const irAlPerfil = window.confirm('Para poder finalizar tu compra, primero debes iniciar sesión o crear una cuenta.\n\n¿Quieres ir a tu perfil ahora?');
+        if (irAlPerfil) {
+          setMostrarCarrito(false);
+          setMostrarPerfil(true);
+        }
+      } else {
+        Alert.alert(
+          'Inicia sesión',
+          'Para poder finalizar tu compra, primero debes iniciar sesión o crear una cuenta.',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Ir a mi Perfil', onPress: () => { setMostrarCarrito(false); setMostrarPerfil(true); } },
+          ]
+        );
+      }
+      return; 
     }
+
     const nuevaCompra = {
       fecha: new Date().toLocaleDateString(),
       total: calcularTotal().toLocaleString('es-CO'),
@@ -174,45 +197,75 @@ export default function App() {
     await AsyncStorage.setItem('@d1_historial', JSON.stringify(nuevoHistorial));
     setCarrito([]);
     setMostrarCarrito(false);
-    Alert.alert('¡Compra exitosa!', 'Revisa tu historial en el Perfil.');
+    
+    if (Platform.OS === 'web') {
+      window.alert('¡Compra exitosa! Revisa tu historial en el Perfil.');
+    } else {
+      Alert.alert('¡Compra exitosa!', 'Revisa tu historial en el Perfil.');
+    }
   };
 
   // --- PANTALLA DE MIS COMPRAS ---
   if (mostrarHistorial) {
+    if (!usuario) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={[styles.header, { marginTop: 40 }]}>
+            <Pressable onPress={() => setMostrarHistorial(false)} style={styles.botonVolverCarrito}>
+              <Text style={styles.textoVolver}>← Volver al catálogo</Text>
+            </Pressable>
+            <Text style={styles.titulo}>Mis Compras</Text>
+          </View>
+          <View style={styles.carritoVacio}>
+            <Text style={{ fontSize: 40, marginBottom: 10 }}>🔒</Text>
+            <Text style={styles.textoVacio}>Inicia sesión para ver tus compras.</Text>
+            <Pressable 
+              style={[styles.botonRojoD1, { marginTop: 20, paddingHorizontal: 40 }]} 
+              onPress={() => { setMostrarHistorial(false); setMostrarPerfil(true); }}
+            >
+              <Text style={styles.textoBotonRojo}>Ir a mi Perfil</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { marginTop: 40 }]}> 
           <Pressable onPress={() => setMostrarHistorial(false)} style={styles.botonVolverCarrito}>
             <Text style={styles.textoVolver}>← Volver al catálogo</Text>
           </Pressable>
           <Text style={styles.titulo}>Mis Compras</Text>
         </View>
+        
         {historialCompras.length === 0 ? (
           <View style={styles.carritoVacio}>
             <Text style={{ fontSize: 40, marginBottom: 10 }}>🛒</Text>
             <Text style={styles.textoVacio}>Aún no tienes compras registradas.</Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={{ padding: 20 }}>
-            {historialCompras.slice().reverse().map((compra, index) => (
-              <View key={index} style={styles.tarjetaHistorial}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.fechaHistorial}>📅 {compra.fecha}</Text>
-                  <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                    <Text style={{ color: '#4CAF50', fontWeight: 'bold', fontSize: 10 }}>COMPLETADA</Text>
+          <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
+            <View style={{ width: '100%', maxWidth: 500 }}>
+              {historialCompras.slice().reverse().map((compra, index) => (
+                <View key={index} style={styles.tarjetaHistorial}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.fechaHistorial}>📅 {compra.fecha}</Text>
+                    <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                      <Text style={{ color: '#4CAF50', fontWeight: 'bold', fontSize: 10 }}>COMPLETADA</Text>
+                    </View>
                   </View>
+                  <Text style={styles.totalHistorial}>Total: ${compra.total}</Text>
+                  <Text style={styles.itemsHistorial}>{compra.items} productos</Text>
                 </View>
-                <Text style={styles.totalHistorial}>Total: ${compra.total}</Text>
-                <Text style={styles.itemsHistorial}>{compra.items} productos</Text>
-              </View>
-            ))}
+              ))}
+            </View>
           </ScrollView>
         )}
       </SafeAreaView>
     );
   }
 
-  // --- PANTALLA DE PERFIL Y LOGIN ---
   if (mostrarPerfil) {
     return (
       <SafeAreaView style={styles.container}>
@@ -299,7 +352,6 @@ export default function App() {
     );
   }
 
-  // --- PANTALLA DE CARRITO ---
   if (mostrarCarrito) {
     return (
       <SafeAreaView style={styles.container}>
@@ -345,17 +397,22 @@ export default function App() {
     );
   }
 
-  // --- CATÁLOGO PRINCIPAL ---
   return (
     <SafeAreaView style={styles.container}>
-      {/* --- CABECERA ESTILO D1 --- */}
+      {/* CABECERA ESTILO D1 CON BUSCADOR FUNCIONAL */}
       <View style={styles.d1Header}>
         <View style={styles.d1FilaSuperior}>
           <View style={styles.d1Logo}>
-            <Image source={require('./assets/logo-d1.png')} style={styles.logoImagen} />
+            <Text style={styles.d1LogoTexto}>D1</Text>
           </View>
           <View style={styles.d1Buscador}>
-            <Text style={styles.d1BuscadorTexto}>¿Qué estás buscando?</Text>
+            <TextInput 
+              style={styles.d1BuscadorInput} 
+              placeholder="¿Qué estás buscando?" 
+              placeholderTextColor="#999"
+              value={busqueda}
+              onChangeText={setBusqueda}
+            />
             <View style={styles.d1BuscadorIcono}>
               <Text style={{ color: 'white', fontWeight: 'bold' }}>🔍</Text>
             </View>
@@ -381,10 +438,7 @@ export default function App() {
         </View>
       </View>
 
-      {/* ============================================================
-          AGREGADO — Banner offline (mejora PWA - Valery)
-          Solo se muestra cuando no hay internet
-          ============================================================ */}
+      {/* Banner offline */}
       {!estaOnline && (
         <View style={{ backgroundColor: '#FFF3E0', padding: 10, alignItems: 'center' }}>
           <Text style={{ color: '#E65100', fontWeight: 'bold', fontSize: 13 }}>
@@ -393,20 +447,7 @@ export default function App() {
         </View>
       )}
 
-      {/* Header original oculto (conservado) */}
-      {false && (
-        <View style={styles.header}>
-          <View style={styles.headerLogo}>
-            <Image source={require('./assets/logo-d1.png')} style={styles.logoImagenHeader} />
-          </View>
-          <View style={styles.headerInfo}>
-            <Text style={styles.titulo}>Catálogo D1</Text>
-            <Text style={styles.subtitulo}>Sesión 10 · IA Local + Carrito</Text>
-          </View>
-        </View>
-      )}
-
-      {/* --- Pestañas --- */}
+      {/* Pestañas */}
       <View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pestanasContainer}>
           {[
@@ -428,24 +469,24 @@ export default function App() {
         </ScrollView>
       </View>
 
-      {/* Pantallas */}
       {pestana === 'original' && (
         <PantallaOriginal
           onAgregar={agregarAlCarrito}
           categoriaSeleccionada={categoriaSeleccionada}
           setCategoriaSeleccionada={setCategoriaSeleccionada}
+          busqueda={busqueda} // 👈 LE PASAMOS LA BÚSQUEDA
         />
       )}
       {pestana === 'optimizada' && <PantallaOptimizada onAgregar={agregarAlCarrito} />}
       {pestana === 'adaptativa' && <PantallaAdaptativa onAgregar={agregarAlCarrito} />}
       {pestana === 'sensores' && <PantallaSensores onAgregar={agregarAlCarrito} />}
 
-      {/* --- BOTÓN FLOTANTE CHATBOT (FAB) --- */}
+      {/* Botón Flotante Chat */}
       <Pressable style={styles.fabChat} onPress={() => setMostrarChatIA(true)}>
         <Text style={styles.fabChatIcon}>🤖</Text>
       </Pressable>
 
-      {/* --- MODAL CHATBOT FLOTANTE --- */}
+      {/* Modal Chat */}
       <Modal
         visible={mostrarChatIA}
         animationType="slide"
@@ -456,7 +497,7 @@ export default function App() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderIzq}>
-                <Image source={require('./assets/logo-d1.png')} style={styles.modalLogo} />
+                <View style={styles.d1Logo}><Text style={styles.d1LogoTexto}>D1</Text></View>
                 <Text style={styles.modalTitulo}>Asistente D1</Text>
               </View>
               <Pressable onPress={() => setMostrarChatIA(false)} style={styles.modalCerrar}>
@@ -473,13 +514,17 @@ export default function App() {
   );
 }
 
-// --- PANTALLA ORIGINAL ---
-function PantallaOriginal({ onAgregar }) {
+// --- COMPONENTES DE PANTALLA ---
+function PantallaOriginal({ onAgregar, busqueda }) {
   const [categoriaActiva, setCategoriaActiva] = useState('Todos');
   const categorias = ['Todos', ...new Set(productos.map((p) => p.categoria))];
-  const productosFiltrados = categoriaActiva === 'Todos'
-    ? productos
-    : productos.filter((p) => p.categoria === categoriaActiva);
+  
+  // FILTRAMOS POR CATEGORÍA Y POR BÚSQUEDA
+  const productosFiltrados = productos.filter((p) => {
+    const coincideCategoria = categoriaActiva === 'Todos' || p.categoria === categoriaActiva;
+    const coincideBusqueda = p.nombre.toLowerCase().includes(busqueda ? busqueda.toLowerCase() : '');
+    return coincideCategoria && coincideBusqueda;
+  });
 
   return (
     <View style={{ flex: 1 }}>
@@ -505,7 +550,7 @@ function PantallaOriginal({ onAgregar }) {
         renderItem={({ item }) => <TarjetaProducto item={item} onAgregar={onAgregar} />}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', marginTop: 20, color: '#666' }}>
-            No hay productos en esta categoría.
+            No se encontraron productos.
           </Text>
         }
       />
@@ -513,7 +558,6 @@ function PantallaOriginal({ onAgregar }) {
   );
 }
 
-// --- PANTALLA OPTIMIZADA ---
 function PantallaOptimizada({ onAgregar }) {
   return (
     <FlatList
@@ -536,7 +580,6 @@ function PantallaOptimizada({ onAgregar }) {
   );
 }
 
-// --- PANTALLA ADAPTATIVA ---
 function PantallaAdaptativa({ onAgregar }) {
   const { width } = useWindowDimensions();
   let columnas = 1;
@@ -582,7 +625,6 @@ function PantallaAdaptativa({ onAgregar }) {
   );
 }
 
-// --- EXPLORACIÓN CÁMARA ---
 function ExploracionCamara({ onCerrar }) {
   const [permiso, pedirPermiso] = useCameraPermissions();
   const [frontal, setFrontal] = useState(false);
@@ -641,7 +683,6 @@ function ExploracionCamara({ onCerrar }) {
   );
 }
 
-// --- PANTALLA SENSORES ---
 function PantallaSensores({ onAgregar }) {
   const [datos, setDatos] = useState({ x: 0, y: 0, z: 0 });
   const [simulados, setSimulados] = useState({ x: 0, y: 0, z: 1 });
@@ -814,7 +855,6 @@ function PantallaSensores({ onAgregar }) {
   );
 }
 
-// --- TARJETA DE PRODUCTO ---
 function TarjetaProducto({ item, onAgregar }) {
   return (
     <View style={styles.tarjeta}>
@@ -834,25 +874,19 @@ function TarjetaProducto({ item, onAgregar }) {
   );
 }
 
-// ============================================================
-// ESTILOS
-// ============================================================
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 0, backgroundColor: '#F5F7FA' },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 20 },
-  headerLogo: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#D32F2F', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  headerInfo: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 20, marginTop: 40 },
   titulo: { fontSize: 26, fontWeight: 'bold', color: '#1A1A1A' },
-  subtitulo: { marginTop: 2, color: '#666', fontSize: 13 },
-  carritoContenedor: { position: 'relative', padding: 10 },
-  carritoIcono: { fontSize: 28 },
-  carritoBadge: { position: 'absolute', top: 2, right: 0, backgroundColor: '#4CAF50', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
-  carritoBadgeTexto: { color: 'white', fontSize: 12, fontWeight: 'bold' },
+  textoVacio: { fontSize: 18, color: '#666' },
+  carritoVacio: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
   pestanasContainer: { paddingHorizontal: 20, paddingVertical: 10, gap: 8 },
   pestana: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: '#E5E9EF', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   pestanaActiva: { backgroundColor: '#D32F2F' },
   textoPestana: { color: '#4A5568', fontWeight: '600', fontSize: 13 },
   textoPestanaActiva: { color: 'white' },
+
   listaContenido: { paddingBottom: 30, paddingHorizontal: 20 },
   tarjeta: { marginTop: 12, padding: 16, backgroundColor: 'white', borderRadius: 14, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   tarjetaAdaptativa: { flex: 1, maxWidth: 400, marginHorizontal: 6 },
@@ -860,15 +894,27 @@ const styles = StyleSheet.create({
   nombre: { fontSize: 17, fontWeight: 'bold', color: '#1A1A1A', flex: 1 },
   descripcion: { marginTop: 6, color: '#666', fontSize: 13 },
   precio: { fontSize: 16, fontWeight: 'bold', color: '#D32F2F', marginLeft: 12 },
+  imagenProducto: { width: '100%', height: 140, borderRadius: 10, marginBottom: 10, backgroundColor: '#f0f0f0' },
+  categoriaBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#D32F2F', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  categoriaTexto: { color: 'white', fontSize: 11, fontWeight: 'bold' },
+  botonAgregar: { marginTop: 12, backgroundColor: '#E5E9EF', paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+  textoBotonAgregar: { color: '#14304D', fontWeight: 'bold' },
+
+  filtrosContainer: { paddingHorizontal: 20, gap: 8, paddingBottom: 5 },
+  botonFiltro: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: 'white', borderRadius: 20, borderWidth: 1, borderColor: '#E5E9EF', marginRight: 8 },
+  botonFiltroActivo: { backgroundColor: '#D32F2F', borderColor: '#D32F2F' },
+  textoFiltro: { fontSize: 14, color: '#4A5568', fontWeight: '600' },
+  textoFiltroActivo: { color: 'white' },
+
   pantallaAdaptativa: { flex: 1, paddingHorizontal: 20 },
-  informacionPantalla: { marginBottom: 8, fontWeight: '600', color: '#4A5568' },
+  fila: { gap: 12 },
   resumen: { backgroundColor: 'white', padding: 16, borderRadius: 14, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   resumenGrande: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   tituloResumen: { fontSize: 18, fontWeight: 'bold', marginBottom: 6, color: '#1A1A1A' },
   textoResumen: { color: '#4A5568', fontSize: 14 },
-  fila: { gap: 12 },
+  informacionPantalla: { marginBottom: 8, fontWeight: '600', color: '#4A5568' },
+
   panelSensor: { paddingBottom: 40, paddingHorizontal: 20 },
-  aviso: { marginVertical: 8, fontSize: 13, color: '#666', fontStyle: 'italic' },
   controlesSensor: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 10 },
   botonSensor: { paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#E5E9EF', borderRadius: 10 },
   botonActivo: { backgroundColor: '#D32F2F' },
@@ -877,32 +923,26 @@ const styles = StyleSheet.create({
   estadoSensor: { marginVertical: 8, color: '#D32F2F', fontWeight: '600' },
   lectura: { fontSize: 15, color: '#1A1A1A', marginTop: 2 },
   tarjetaSensor: { marginVertical: 10, padding: 16, borderRadius: 14 },
-  tarjetaAgitacion: { marginTop: 16, padding: 20, backgroundColor: 'white', borderRadius: 16, borderWidth: 2, borderColor: '#E5E9EF', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  tarjetaAgitacion: { marginTop: 16, padding: 20, backgroundColor: 'white', borderRadius: 16, borderWidth: 2, borderColor: '#E5E9EF', alignItems: 'center' },
   tarjetaAgitacionFlash: { backgroundColor: '#FFF176', borderColor: '#FBC02D' },
   tituloAgitacion: { fontSize: 16, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 8 },
   contadorAgitaciones: { fontSize: 56, fontWeight: 'bold', color: '#D32F2F', marginVertical: 4 },
-  etiquetaContador: { fontSize: 13, color: '#666', marginBottom: 12 },
   estadoAgitacion: { fontSize: 14, color: '#4A5568', fontWeight: '600', marginBottom: 12 },
   botonReiniciar: { paddingVertical: 10, paddingHorizontal: 24, backgroundColor: '#1A1A1A', borderRadius: 10, marginBottom: 12 },
   textoBotonReiniciar: { color: 'white', fontWeight: 'bold', fontSize: 14 },
   botonCamara: { marginTop: 16, backgroundColor: '#14304D' },
   textoBotonCamara: { color: 'white', fontWeight: '600' },
-  panelCamara: { flex: 1, minHeight: 0, paddingHorizontal: 20 },
+  panelCamara: { flex: 1, minHeight: 0, paddingHorizontal: 20, marginTop: 40 },
   camara: { height: 280, marginTop: 12, borderRadius: 12, overflow: 'hidden' },
-  errorCamara: { marginTop: 12, color: '#C62828', fontWeight: '600' },
-  bannerAviso: { backgroundColor: '#FFF3E0', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#FFB74D', marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  textoAvisoBanner: { color: '#E65100', fontWeight: 'bold', fontSize: 13, flex: 1 },
-  botonBanner: { backgroundColor: '#E65100', padding: 8, borderRadius: 6, marginLeft: 10 },
-  textoBotonBanner: { color: 'white', fontSize: 12, fontWeight: 'bold' },
   botonManual: { marginTop: 10, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#E5E9EF', borderRadius: 8 },
   textoBotonManual: { color: '#4A5568', fontWeight: '600', fontSize: 13 },
-  toastExito: { position: 'absolute', bottom: 40, alignSelf: 'center', backgroundColor: '#4CAF50', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 25, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 5, elevation: 5 },
+  toastExito: { position: 'absolute', bottom: 40, alignSelf: 'center', backgroundColor: '#4CAF50', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 25 },
   textoToast: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+
   botonVolverCarrito: { paddingVertical: 10, paddingRight: 20 },
   textoVolver: { color: '#D32F2F', fontSize: 16, fontWeight: 'bold' },
-  carritoVacio: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  textoVacio: { fontSize: 18, color: '#666' },
   tarjetaCarrito: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 16, borderRadius: 12, marginBottom: 10 },
+  imagenCarrito: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#f0f0f0' },
   precioCarrito: { fontSize: 14, color: '#666', marginTop: 4 },
   botonEliminar: { padding: 10, backgroundColor: '#FFEBEE', borderRadius: 8 },
   textoEliminar: { color: '#D32F2F', fontWeight: 'bold' },
@@ -910,21 +950,13 @@ const styles = StyleSheet.create({
   textoTotal: { fontSize: 20, fontWeight: 'bold', color: '#1A1A1A' },
   botonPagar: { backgroundColor: '#4CAF50', paddingVertical: 14, paddingHorizontal: 30, borderRadius: 10 },
   textoPagar: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  botonAgregar: { marginTop: 12, backgroundColor: '#E5E9EF', paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
-  textoBotonAgregar: { color: '#14304D', fontWeight: 'bold' },
-  filtrosContainer: { paddingHorizontal: 20, gap: 8, paddingBottom: 5 },
-  botonFiltro: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: 'white', borderRadius: 20, borderWidth: 1, borderColor: '#E5E9EF', marginRight: 8 },
-  botonFiltroActivo: { backgroundColor: '#D32F2F', borderColor: '#D32F2F' },
-  textoFiltro: { fontSize: 14, color: '#4A5568', fontWeight: '600' },
-  textoFiltroActivo: { color: 'white' },
-  imagenCarrito: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#f0f0f0' },
 
-  /* --- CABECERA ESTILO D1 --- */
   d1Header: { backgroundColor: 'white', paddingTop: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#E5E9EF', marginBottom: 10 },
   d1FilaSuperior: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, gap: 10 },
   d1Logo: { backgroundColor: '#D32F2F', width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  d1LogoTexto: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   d1Buscador: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F7FA', borderRadius: 20, paddingLeft: 15, height: 40, justifyContent: 'space-between' },
-  d1BuscadorTexto: { color: '#999', fontSize: 14 },
+  d1BuscadorInput: { flex: 1, fontSize: 14, color: '#1A1A1A', paddingVertical: 10, paddingHorizontal: 15, height: '100%' },
   d1BuscadorIcono: { backgroundColor: '#D32F2F', width: 35, height: 35, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 3 },
   d1Carrito: { alignItems: 'center', justifyContent: 'center' },
   d1CarritoTexto: { fontSize: 10, fontWeight: 'bold', color: '#D32F2F', marginTop: -2 },
@@ -933,40 +965,17 @@ const styles = StyleSheet.create({
   d1Icono: { fontSize: 18, marginBottom: 2 },
   d1IconoTexto: { fontSize: 11, color: '#4A5568', fontWeight: '600' },
 
-  /* --- LOGO IMAGEN --- */
-  logoImagen: { width: 32, height: 32, resizeMode: 'contain' },
-  logoImagenHeader: { width: 40, height: 40, resizeMode: 'contain' },
-
-  /* --- FAB CHATBOT FLOTANTE --- */
-  fabChat: { position: 'absolute', bottom: 24, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: '#D32F2F', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 8, zIndex: 100 },
+  fabChat: { position: 'absolute', bottom: 24, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: '#D32F2F', alignItems: 'center', justifyContent: 'center', elevation: 8 },
   fabChatIcon: { fontSize: 28 },
-
-  /* --- MODAL CHATBOT --- */
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%', paddingBottom: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: -2 }, elevation: 10 },
+  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '80%', paddingBottom: 20 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E5E9EF' },
   modalHeaderIzq: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  modalLogo: { width: 32, height: 32, resizeMode: 'contain' },
   modalTitulo: { fontSize: 18, fontWeight: 'bold', color: '#1A1A1A' },
   modalCerrar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F7FA', alignItems: 'center', justifyContent: 'center' },
   modalCerrarTexto: { fontSize: 16, color: '#4A5568', fontWeight: 'bold' },
-  modalBody: { flex: 1, maxHeight: '75%' },
+  modalBody: { flex: 1 },
 
-  /* --- PERFIL --- */
-  saludo: { fontSize: 24, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 10 },
-  botonCerrarSesion: { backgroundColor: '#FFEBEE', padding: 10, borderRadius: 8, alignSelf: 'flex-start', marginTop: 10 },
-  textoCerrarSesion: { color: '#D32F2F', fontWeight: 'bold' },
-  tituloLogin: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
-  inputLogin: { backgroundColor: 'white', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#ccc', marginBottom: 15 },
-  botonLogin: { backgroundColor: '#D32F2F', padding: 15, borderRadius: 10, alignItems: 'center' },
-  textoBotonLogin: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  subtituloHistorial: { fontSize: 20, fontWeight: 'bold', marginTop: 30, marginBottom: 15, color: '#1A1A1A' },
-  tarjetaHistorial: { backgroundColor: 'white', padding: 15, borderRadius: 10, marginBottom: 10, borderLeftWidth: 4, borderLeftColor: '#4CAF50' },
-  fechaHistorial: { fontSize: 12, color: '#666', marginBottom: 5 },
-  totalHistorial: { fontSize: 18, fontWeight: 'bold', color: '#D32F2F' },
-  itemsHistorial: { fontSize: 14, color: '#4A5568', marginTop: 5 },
-
-  /* --- LOGIN ESTILO D1 --- */
   headerLogin: { paddingTop: 50, paddingHorizontal: 20, paddingBottom: 10 },
   scrollLogin: { paddingHorizontal: 20, paddingBottom: 40 },
   tituloBienvenida: { fontSize: 28, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 8 },
@@ -980,13 +989,15 @@ const styles = StyleSheet.create({
   textoEnlaceD1: { color: '#D32F2F', fontSize: 14, fontWeight: '600' },
   saludoLogin: { fontSize: 24, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 5 },
   correoLogin: { fontSize: 14, color: '#666', marginBottom: 15 },
-  tarjetaPerfil: { backgroundColor: 'white', padding: 20, borderRadius: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, marginBottom: 20 },
+  tarjetaPerfil: { backgroundColor: 'white', padding: 20, borderRadius: 15, marginBottom: 20 },
   resumenCompras: { backgroundColor: '#E3F2FD', padding: 20, borderRadius: 15, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#BBDEFB' },
   textoResumenCompras: { fontSize: 16, color: '#1976D2', fontWeight: 'bold', marginBottom: 10 },
   enlaceResumen: { fontSize: 14, color: '#D32F2F', fontWeight: 'bold', textDecorationLine: 'underline' },
-
-  /* --- TARJETA PRODUCTO (imagen + badge) --- */
-  imagenProducto: { width: '100%', height: 140, borderRadius: 10, marginBottom: 10, backgroundColor: '#f0f0f0' },
-  categoriaBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#D32F2F', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  categoriaTexto: { color: 'white', fontSize: 11, fontWeight: 'bold' },
+  botonCerrarSesion: { backgroundColor: '#FFEBEE', padding: 10, borderRadius: 8, alignSelf: 'flex-start', marginTop: 10 },
+  textoCerrarSesion: { color: '#D32F2F', fontWeight: 'bold' },
+  
+  tarjetaHistorial: { backgroundColor: 'white', padding: 16, borderRadius: 12, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: '#4CAF50', width: '100%', alignSelf: 'center' },
+  fechaHistorial: { fontSize: 12, color: '#666', marginBottom: 5 },
+  totalHistorial: { fontSize: 18, fontWeight: 'bold', color: '#D32F2F' },
+  itemsHistorial: { fontSize: 14, color: '#4A5568', marginTop: 5 },
 });

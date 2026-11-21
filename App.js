@@ -77,13 +77,23 @@ export default function App() {
   const agregarAlCarrito = (producto) => setCarrito((prev) => [...prev, producto]);
   const eliminarDelCarrito = (index) => setCarrito((prev) => prev.filter((_, i) => i !== index));
 
-  useEffect(() => {
+   useEffect(() => {
     const cargarDatos = async () => {
       try {
         const user = await AsyncStorage.getItem('@d1_usuario_completo');
-        const historial = await AsyncStorage.getItem('@d1_historial');
-        if (user) setUsuario(JSON.parse(user));
-        if (historial) setHistorialCompras(JSON.parse(historial));
+        
+        if (user) {
+          // Creamos el userObj AQUÍ ADENTRO
+          const userObj = JSON.parse(user);
+          setUsuario(userObj);
+          
+          const historial = await AsyncStorage.getItem(`@d1_historial_${userObj.correo}`);
+          if (historial) {
+            setHistorialCompras(JSON.parse(historial));
+          } else {
+            setHistorialCompras([]);
+          }
+        }
       } catch (e) {
         console.log('Error cargando datos', e);
       }
@@ -104,24 +114,38 @@ export default function App() {
       };
     }
   }, []);
-
   const handleLogin = async () => {
     if (!correo.trim() || !password.trim()) return Alert.alert('Error', 'Llena todos los campos');
     
-    const usuarioGuardado = await AsyncStorage.getItem('@d1_usuario_completo');
-    
-    if (usuarioGuardado) {
-      const userObj = JSON.parse(usuarioGuardado);
+    try {
+      const usuarioGuardado = await AsyncStorage.getItem('@d1_usuario_completo');
       
-      if (userObj.correo === correo && userObj.password === password) {
-        setUsuario(userObj); 
-        setCorreo('');
-        setPassword('');
+      if (usuarioGuardado) {
+        // 👈 EL userObj SE CREA AQUÍ
+        const userObj = JSON.parse(usuarioGuardado);
+        
+        if (userObj.correo === correo && userObj.password === password) {
+          const historialGuardado = await AsyncStorage.getItem(`@d1_historial_${userObj.correo}`);
+          
+          if (historialGuardado) {
+            setHistorialCompras(JSON.parse(historialGuardado));
+          } else {
+            setHistorialCompras([]);
+          }
+          
+          setUsuario(userObj); 
+          setCorreo('');
+          setPassword('');
+          setMostrarPerfil(false);
+        } else {
+          Alert.alert('Error', 'Correo o contraseña incorrectos');
+        }
       } else {
-        Alert.alert('Error', 'Correo o contraseña incorrectos');
+        Alert.alert('Error', 'No hay ninguna cuenta registrada con este correo.');
       }
-    } else {
-      Alert.alert('Error', 'No hay ninguna cuenta registrada con este correo.');
+    } catch (e) {
+      console.log('Error al iniciar sesión:', e);
+      Alert.alert('Error', 'Ocurrió un problema al iniciar sesión.');
     }
   };
 
@@ -152,7 +176,7 @@ export default function App() {
   const handleLogout = async () => {
     setUsuario(null);
     setHistorialCompras([]); 
-    setCarrito([]); 
+     // setCarrito([]); 
     
     setCorreo('');
     setPassword('');
@@ -164,7 +188,7 @@ export default function App() {
     // 🛑 NO BORRAMOS EL HISTORIAL DE ASYNCSTORAGE
   };
 
-  const handlePagar = async () => {
+    const handlePagar = async () => {
     if (carrito.length === 0) return;
 
     if (!usuario) {
@@ -187,14 +211,18 @@ export default function App() {
       return; 
     }
 
+    // Guardamos la compra con el detalle de los productos
     const nuevaCompra = {
       fecha: new Date().toLocaleDateString(),
       total: calcularTotal().toLocaleString('es-CO'),
       items: carrito.length,
+      productos: carrito, // 👈 NUEVO: Guardamos el arreglo completo
     };
+    
     const nuevoHistorial = [...historialCompras, nuevaCompra];
     setHistorialCompras(nuevoHistorial);
-    await AsyncStorage.setItem('@d1_historial', JSON.stringify(nuevoHistorial));
+    await AsyncStorage.setItem(`@d1_historial_${usuario.correo}`, JSON.stringify(nuevoHistorial));
+    
     setCarrito([]);
     setMostrarCarrito(false);
     
@@ -238,8 +266,7 @@ export default function App() {
           </Pressable>
           <Text style={styles.titulo}>Mis Compras</Text>
         </View>
-        
-        {historialCompras.length === 0 ? (
+           {historialCompras.length === 0 ? (
           <View style={styles.carritoVacio}>
             <Text style={{ fontSize: 40, marginBottom: 10 }}>🛒</Text>
             <Text style={styles.textoVacio}>Aún no tienes compras registradas.</Text>
@@ -256,7 +283,16 @@ export default function App() {
                     </View>
                   </View>
                   <Text style={styles.totalHistorial}>Total: ${compra.total}</Text>
-                  <Text style={styles.itemsHistorial}>{compra.items} productos</Text>
+                  
+                  {/* 👈 ESTO ES LO NUEVO: Desglose de productos */}
+                  <View style={{ marginTop: 8, borderTopWidth: 1, borderColor: '#eee', paddingTop: 8 }}>
+                    {compra.productos && compra.productos.map((prod, i) => (
+                      <Text key={i} style={{ fontSize: 13, color: '#4A5568', marginBottom: 2 }}>
+                        • {prod.nombre} - {prod.precio}
+                      </Text>
+                    ))}
+                  </View>
+
                 </View>
               ))}
             </View>

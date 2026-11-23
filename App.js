@@ -4,6 +4,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Accelerometer } from 'expo-sensors';
+import * as Linking from 'expo-linking';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -21,6 +22,13 @@ import {
   View,
 } from 'react-native';
 import AsistenteIA from './AsistenteIA';
+
+const TIENDA_D1 = 'Tienda D1';
+
+const abrirMapa = () => {
+  const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(TIENDA_D1);
+  Linking.openURL(url).catch((e) => console.log('No se pudo abrir el mapa', e));
+};
 
 const productos = [
   { id: '1', nombre: 'Leche Entera Latti', categoria: 'Lácteos', descripcion: 'Leche entera pasteurizada 1000ml', precio: '$3.100', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/198962-1200-1200?v=639179630422500000&width=1200&height=1200&aspect=true' },
@@ -60,6 +68,9 @@ export default function App() {
 
   const [carrito, setCarrito] = useState([]);
   const [mostrarCarrito, setMostrarCarrito] = useState(false);
+  const [codigoDescuento, setCodigoDescuento] = useState('');
+  const [descuentoAplicado, setDescuentoAplicado] = useState(false);
+  const [mensajeCodigo, setMensajeCodigo] = useState('');
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
 
   const [mostrarPerfil, setMostrarPerfil] = useState(false);
@@ -74,6 +85,18 @@ export default function App() {
     }, 0);
   };
 
+    const calcularDescuento = () => (descuentoAplicado ? Math.round(calcularTotal() * 0.10) : 0);
+  const calcularTotalFinal = () => calcularTotal() - calcularDescuento();
+
+  const aplicarCodigo = () => {
+    if (codigoDescuento.trim().toUpperCase() === 'D1DESCUENTO') {
+      setDescuentoAplicado(true);
+      setMensajeCodigo('✅ Código aplicado: 10% de descuento');
+    } else {
+      setDescuentoAplicado(false);
+      setMensajeCodigo('❌ Código no válido');
+    }
+  };
   const agregarAlCarrito = (producto) => setCarrito((prev) => [...prev, producto]);
   const eliminarDelCarrito = (index) => setCarrito((prev) => prev.filter((_, i) => i !== index));
 
@@ -174,6 +197,9 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    setCodigoDescuento('');
+    setDescuentoAplicado(false);
+    setMensajeCodigo('');
     setUsuario(null);
     setHistorialCompras([]); 
      // setCarrito([]); 
@@ -214,7 +240,7 @@ export default function App() {
     // Guardamos la compra con el detalle de los productos
     const nuevaCompra = {
       fecha: new Date().toLocaleDateString(),
-      total: calcularTotal().toLocaleString('es-CO'),
+      total: calcularTotalFinal().toLocaleString('es-CO'),
       items: carrito.length,
       productos: carrito, // 👈 NUEVO: Guardamos el arreglo completo
     };
@@ -419,10 +445,42 @@ export default function App() {
                 </View>
               )}
             />
+                        <View style={styles.cajaDescuento}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput
+                  style={styles.inputDescuento}
+                  placeholder="Código de descuento"
+                  placeholderTextColor="#A0A0A0"
+                  autoCapitalize="characters"
+                  value={codigoDescuento}
+                  onChangeText={setCodigoDescuento}
+                />
+                <Pressable style={styles.botonAplicar} onPress={aplicarCodigo}>
+                  <Text style={styles.textoBotonAplicar}>Aplicar</Text>
+                </Pressable>
+              </View>
+              {!!mensajeCodigo && (
+                <Text style={[styles.mensajeCodigo, { color: descuentoAplicado ? '#4CAF50' : '#D32F2F' }]}>
+                  {mensajeCodigo}
+                </Text>
+              )}
+            </View>
             <View style={styles.footerCarrito}>
-              <Text style={styles.textoTotal}>
-                Total: ${calcularTotal().toLocaleString('es-CO')}
-              </Text>
+              <View>
+                {descuentoAplicado && (
+                  <>
+                    <Text style={styles.textoSubtotal}>
+                      Subtotal: ${calcularTotal().toLocaleString('es-CO')}
+                    </Text>
+                    <Text style={styles.textoDescuento}>
+                      Descuento 10%: -${calcularDescuento().toLocaleString('es-CO')}
+                    </Text>
+                  </>
+                )}
+                <Text style={styles.textoTotal}>
+                  Total: ${calcularTotalFinal().toLocaleString('es-CO')}
+                </Text>
+              </View>
               <Pressable style={styles.botonPagar} onPress={handlePagar}>
                 <Text style={styles.textoPagar}>Pagar</Text>
               </Pressable>
@@ -459,7 +517,7 @@ export default function App() {
           </Pressable>
         </View>
         <View style={styles.d1FilaInferior}>
-          <Pressable style={styles.d1IconoNav}>
+          <Pressable style={styles.d1IconoNav} onPress={abrirMapa}>
             <Text style={styles.d1Icono}>🏪</Text>
             <Text style={styles.d1IconoTexto}>Tiendas</Text>
           </Pressable>
@@ -1036,4 +1094,12 @@ const styles = StyleSheet.create({
   fechaHistorial: { fontSize: 12, color: '#666', marginBottom: 5 },
   totalHistorial: { fontSize: 18, fontWeight: 'bold', color: '#D32F2F' },
   itemsHistorial: { fontSize: 14, color: '#4A5568', marginTop: 5 },
+    /* --- CÓDIGO DE DESCUENTO --- */
+  cajaDescuento: { paddingVertical: 12 },
+  inputDescuento: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 25, paddingVertical: 10, paddingHorizontal: 15, backgroundColor: 'white', fontSize: 14 },
+  botonAplicar: { backgroundColor: '#D32F2F', paddingHorizontal: 20, borderRadius: 25, justifyContent: 'center' },
+  textoBotonAplicar: { color: 'white', fontWeight: 'bold' },
+  mensajeCodigo: { marginTop: 6, fontSize: 13, fontWeight: '600' },
+  textoSubtotal: { fontSize: 14, color: '#666' },
+  textoDescuento: { fontSize: 14, color: '#4CAF50', fontWeight: '600' },
 });

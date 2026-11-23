@@ -1,10 +1,12 @@
 /* ============================================================
    CATÁLOGO D1 — Versión Final (IA + Carrito + UX + Sensores)
+   Mejoras agregadas: Modo Oscuro + Notificaciones al pagar (Valery)
    ============================================================ */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { Accelerometer } from "expo-sensors";
 import * as Linking from "expo-linking";
+import * as Notifications from "expo-notifications";
+import { Accelerometer } from "expo-sensors";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -23,6 +25,21 @@ import {
   View,
 } from "react-native";
 import AsistenteIA from "./AsistenteIA";
+
+/* ------------------------------------------------------------
+   NOTIFICACIONES
+   Define cómo se muestran las alertas cuando la app está abierta.
+   shouldShowAlert: muestra el aviso en pantalla
+   shouldPlaySound: reproduce sonido
+   shouldSetBadge: no modifica el contador del ícono
+   ------------------------------------------------------------ */
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const TIENDA_D1 = "Tienda D1";
 
@@ -209,6 +226,41 @@ export default function App() {
   /* AGREGADO: Valor animado para el efecto de rebote en el carrito (Gabriel) */
   const escalaCarrito = useRef(new Animated.Value(1)).current;
 
+  /* Valor animado para el salto del sol/luna al cambiar el tema */
+  const escalaTema = useRef(new Animated.Value(1)).current;
+
+  /* ------------------------------------------------------------
+     MODO OSCURO
+     temaOscuro: true = fondos oscuros y textos claros
+     false = tema claro por defecto
+     ------------------------------------------------------------ */
+  const [temaOscuro, setTemaOscuro] = useState(false);
+
+  /* ------------------------------------------------------------
+     COLORES SEGÚN TEMA
+     Paleta que se aplica a fondos, textos y headers
+     según esté activo el modo oscuro o el claro.
+     ------------------------------------------------------------ */
+  const colores = temaOscuro
+    ? {
+        fondo: "#121212",
+        tarjeta: "#1E1E1E",
+        texto: "#FFFFFF",
+        textoSec: "#B0B0B0",
+        header: "#1A1A1A",
+        borde: "#333333",
+        acento: "#EF5350",
+      }
+    : {
+        fondo: "#F5F7FA",
+        tarjeta: "#FFFFFF",
+        texto: "#1A1A1A",
+        textoSec: "#666666",
+        header: "#FFFFFF",
+        borde: "#E5E9EF",
+        acento: "#D32F2F",
+      };
+
   const calcularTotal = () => {
     return carrito.reduce((total, prod) => {
       const precioNum = parseInt(prod.precio.replace(/[^0-9]/g, ""), 10);
@@ -267,6 +319,9 @@ export default function App() {
             setHistorialCompras([]);
           }
         }
+        // Restaura la preferencia de tema (oscuro/claro) guardada
+        const tema = await AsyncStorage.getItem("@d1_tema_oscuro");
+        if (tema !== null) setTemaOscuro(JSON.parse(tema));
       } catch (e) {
         console.log("Error cargando datos", e);
       }
@@ -287,6 +342,73 @@ export default function App() {
       };
     }
   }, []);
+
+  /* ------------------------------------------------------------
+     PERMISO DE NOTIFICACIONES
+     Se solicita una vez al abrir la app para poder
+     mostrar el aviso de "Pedido confirmado".
+     ------------------------------------------------------------ */
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== "granted") {
+          console.log("Permiso de notificaciones denegado");
+        }
+      } catch (e) {
+        console.log("Notificaciones no disponibles en este entorno", e);
+      }
+    })();
+  }, []);
+
+  /* ------------------------------------------------------------
+     ALTERNAR TEMA
+     Cambia entre modo claro y oscuro y guarda la preferencia
+     en AsyncStorage para recordarla al reabrir la app.
+     ------------------------------------------------------------ */
+  const alternarTema = async () => {
+    // Animación: el ícono (sol/luna) salta y vuelve
+    Animated.sequence([
+      Animated.timing(escalaTema, {
+        toValue: 1.5,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(escalaTema, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const nuevo = !temaOscuro;
+    setTemaOscuro(nuevo);
+    try {
+      await AsyncStorage.setItem("@d1_tema_oscuro", JSON.stringify(nuevo));
+    } catch (e) {
+      console.log("No se pudo guardar el tema", e);
+    }
+  };
+
+  /* ------------------------------------------------------------
+     NOTIFICACIÓN AL PAGAR
+     Envía una notificación local inmediata cuando el usuario
+     completa una compra. trigger: null = se muestra al momento.
+     ------------------------------------------------------------ */
+  const enviarNotificacionPedido = async (total) => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "✅ Pedido confirmado",
+          body: `Tu compra por $${total} fue registrada. ¡Gracias por elegir D1!`,
+          sound: true,
+        },
+        trigger: null,
+      });
+    } catch (e) {
+      console.log("No se pudo enviar la notificación", e);
+    }
+  };
 
   const handleLogin = async () => {
     if (!correo.trim() || !password.trim())
@@ -422,6 +544,9 @@ export default function App() {
       JSON.stringify(nuevoHistorial),
     );
 
+    // Notificación local de pedido confirmado (usa el total ya calculado)
+    await enviarNotificacionPedido(nuevaCompra.total);
+
     setCarrito([]);
     setMostrarCarrito(false);
 
@@ -436,7 +561,7 @@ export default function App() {
   if (mostrarHistorial) {
     if (!usuario) {
       return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colores.fondo }]}>
           <View style={[styles.header, { marginTop: 40 }]}>
             <Pressable
               onPress={() => setMostrarHistorial(false)}
@@ -444,7 +569,7 @@ export default function App() {
             >
               <Text style={styles.textoVolver}>← Volver al catálogo</Text>
             </Pressable>
-            <Text style={styles.titulo}>Mis Compras</Text>
+            <Text style={[styles.titulo, { color: colores.texto }]}>Mis Compras</Text>
           </View>
           <View style={styles.carritoVacio}>
             <Text style={{ fontSize: 40, marginBottom: 10 }}>🔒</Text>
@@ -469,7 +594,7 @@ export default function App() {
     }
 
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colores.fondo }]}>
         <View style={[styles.header, { marginTop: 40 }]}>
           <Pressable
             onPress={() => setMostrarHistorial(false)}
@@ -477,7 +602,7 @@ export default function App() {
           >
             <Text style={styles.textoVolver}>← Volver al catálogo</Text>
           </Pressable>
-          <Text style={styles.titulo}>Mis Compras</Text>
+          <Text style={[styles.titulo, { color: colores.texto }]}>Mis Compras</Text>
         </View>
         {historialCompras.length === 0 ? (
           <View style={styles.carritoVacio}>
@@ -562,7 +687,7 @@ export default function App() {
   /* AGREGADO: Pantalla de Soporte Tecnico (Gabriel) */
   if (mostrarSoporte) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colores.fondo }]}>
         <View style={[styles.header, { marginTop: 40 }]}>
           <Pressable
             onPress={() => setMostrarSoporte(false)}
@@ -570,7 +695,7 @@ export default function App() {
           >
             <Text style={styles.textoVolver}>← Volver al Perfil</Text>
           </Pressable>
-          <Text style={styles.titulo}>Soporte Técnico</Text>
+          <Text style={[styles.titulo, { color: colores.texto }]}>Soporte Técnico</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20 }}>
           <Text style={styles.labelInput}>
@@ -608,7 +733,7 @@ export default function App() {
   /* AGREGADO: Pantalla de Ajustes (Gabriel) */
   if (mostrarAjustes) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colores.fondo }]}>
         <View style={[styles.header, { marginTop: 40 }]}>
           <Pressable
             onPress={() => setMostrarAjustes(false)}
@@ -616,7 +741,7 @@ export default function App() {
           >
             <Text style={styles.textoVolver}>← Volver al Perfil</Text>
           </Pressable>
-          <Text style={styles.titulo}>Ajustes</Text>
+          <Text style={[styles.titulo, { color: colores.texto }]}>Ajustes</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20 }}>
           <View style={styles.tarjetaPerfil}>
@@ -658,7 +783,7 @@ export default function App() {
 
   if (mostrarPerfil) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colores.fondo }]}>
         <View style={styles.headerLogin}>
           <Pressable
             onPress={() => {
@@ -844,7 +969,7 @@ export default function App() {
 
   if (mostrarCarrito) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colores.fondo }]}>
         <SafeAreaView style={styles.header}>
           <Pressable
             onPress={() => setMostrarCarrito(false)}
@@ -852,7 +977,7 @@ export default function App() {
           >
             <Text style={styles.textoVolver}>← Volver al catálogo</Text>
           </Pressable>
-          <Text style={styles.titulo}>Mi Carrito</Text>
+          <Text style={[styles.titulo, { color: colores.texto }]}>Mi Carrito</Text>
         </SafeAreaView>
         {carrito.length === 0 ? (
           <View style={styles.carritoVacio}>
@@ -938,8 +1063,8 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.d1Header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colores.fondo }]}>
+      <View style={[styles.d1Header, { backgroundColor: colores.header, borderBottomColor: colores.borde }]}>
         <View style={styles.d1FilaSuperior}>
           <View style={styles.d1Logo}>
             <Text style={styles.d1LogoTexto}>D1</Text>
@@ -969,6 +1094,41 @@ export default function App() {
               </Text>
             </Pressable>
           </Animated.View>
+
+          {/* ------------------------------------------------------------
+              MODO OSCURO (un solo botón)
+              Al presionar, el sol/luna hace un salto (animación)
+              y cambia el tema de toda la app (incluido Mis Compras).
+              ------------------------------------------------------------ */}
+          <Pressable onPress={alternarTema}>
+            <Animated.View
+              style={{
+                marginLeft: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: temaOscuro ? "#333333" : "#FFEBEE",
+                borderWidth: 1,
+                borderColor: temaOscuro ? "#555" : "#FFCDD2",
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: escalaTema }],
+              }}
+            >
+              <Text style={{ fontSize: 22 }}>
+                {temaOscuro ? "☀️" : "🌙"}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: "bold",
+                  color: temaOscuro ? "#FFF" : "#D32F2F",
+                }}
+              >
+                {temaOscuro ? "Claro" : "Oscuro"}
+              </Text>
+            </Animated.View>
+          </Pressable>
         </View>
         <View style={styles.d1FilaInferior}>
           <Pressable style={styles.d1IconoNav} onPress={abrirMapa}>

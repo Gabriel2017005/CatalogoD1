@@ -51,6 +51,7 @@ const abrirMapa = () => {
 };
 
 const productos = [
+<<<<<<< Updated upstream
   {
     id: "1",
     nombre: "Leche Entera Latti",
@@ -186,6 +187,38 @@ const productos = [
     imagen:
       "https://d1tiendas.vtexassets.com/arquivos/ids/200172-1200-1200?v=639179655046300000&width=1200&height=1200&aspect=true",
   },
+=======
+  { id: '1', nombre: 'Leche Entera Latti', categoria: 'Lácteos', descripcion: 'Leche entera pasteurizada 1000ml', precio: '$3.100', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/198962-1200-1200?v=639179630422500000&width=1200&height=1200&aspect=true' },
+  { id: '2', nombre: 'Arroz Albar', categoria: 'Despensa', descripcion: 'Arroz estándar 500g', precio: '$1.650', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/200594-1200-1200?v=639179664265570000&width=1200&height=1200&aspect=true' },
+  { id: '3', nombre: 'Huevos Sol Naciente', categoria: 'Huevos', descripcion: 'Huevo tipo AA x12', precio: '$7.490', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/199351-1200-1200?v=639179638216470000&width=1200&height=1200&aspect=true' },
+  { id: '4', nombre: 'Pan Tajado Mantequilla', categoria: 'Panadería', descripcion: 'Pan tajado 450g', precio: '$3.850', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/202462-1200-1200?v=639179728481330000&width=1200&height=1200&aspect=true' },
+  { id: '5', nombre: 'Aceite Vegetal Imatá', categoria: 'Despensa', descripcion: 'Aceite vegetal 900ml', precio: '$6.750', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/201946-1200-1200?v=639179698978470000&width=1200&height=1200&aspect=true' },
+  { id: '6', nombre: 'Azúcar Blanca', categoria: 'Despensa', descripcion: 'Azúcar blanca 1000g', precio: '$3.300', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/204384-1200-1200?v=639190439827730000&width=1200&height=1200&aspect=true' },
+  { id: '7', nombre: 'Café Viejo Molino', categoria: 'Bebidas', descripcion: 'Café tostado y molido 125g', precio: '$5.700', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/200598-1200-1200?v=639179664360900000&width=1200&height=1200&aspect=true' },
+  { id: '8', nombre: 'Chocolate De La Taza', categoria: 'Bebidas', descripcion: 'Chocolate de mesa 500g', precio: '$10.650', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/199885-1200-1200?v=639179648831400000&width=1200&height=1200&aspect=true' },
+  { id: '9', nombre: 'Galletas Saltísimas', categoria: 'Snacks', descripcion: 'Galletas integrales 378g', precio: '$5.490', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/202040-1200-1200?v=639179701430900000&width=1200&height=1200&aspect=true' },
+  { id: '10', nombre: 'Spaghetti Doria', categoria: 'Despensa', descripcion: 'Pasta 250g + 10% extra', precio: '$2.100', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/206437-1200-1200?v=639240370494200000&width=1200&height=1200&aspect=true' },
+  { id: '11', nombre: 'Atún El Navío', categoria: 'Enlatados', descripcion: 'Atún rallado en aceite 170g', precio: '$3.450', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/199584-1200-1200?v=639179642857870000&width=1200&height=1200&aspect=true' },
+  { id: '12', nombre: 'Frijol Rojo El Estío', categoria: 'Despensa', descripcion: 'Frijol rojo 500g', precio: '$3.690', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/205197-1200-1200?v=639202705383630000&width=1200&height=1200&aspect=true' },
+  { id: '13', nombre: 'Lenteja El Estío', categoria: 'Despensa', descripcion: 'Lentejas 500g', precio: '$1.590', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/198845-1200-1200?v=639179627775400000&width=1200&height=1200&aspect=true' },
+  { id: '14', nombre: 'Sal Refisal', categoria: 'Despensa', descripcion: 'Sal refinada 1000g', precio: '$2.900', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/200929-1200-1200?v=639179671225000000&width=1200&height=1200&aspect=true' },
+  { id: '15', nombre: 'Harina Quicksy', categoria: 'Despensa', descripcion: 'Harina de trigo 500g', precio: '$1.700', imagen: 'https://d1tiendas.vtexassets.com/arquivos/ids/200172-1200-1200?v=639179655046300000&width=1200&height=1200&aspect=true' },
+  { id: '16', nombre: 'Leche Deslactosada Alqueria', categoria: 'Lácteos', descripcion: 'Leche deslactosada entera 1000ml', precio: '$4.350', imagen: 'https://exitocol.vtexassets.com/arquivos/ids/35916424/Leche-Deslactosada-En-Caja-X-1-Litro-81933_a.jpg?v=639270711375430000' },
+  { id: '17', nombre: 'Pan Tajado Blanco Bimbo', categoria: 'Panadería', descripcion: 'Pan blanco tajado grande 460g', precio: '$6.800', imagen: 'https://mercadomadrid.com.co/13622-superlarge_default_2x/pan-tajado-bimbo-blanco-grande-bolsa-600-gramos.jpg' },
+  { id: '18', nombre: 'Huevos AA x 30', categoria: 'Huevos', descripcion: 'Cubeta de huevos AA x 30 unidades', precio: '$15.500', imagen: 'https://avinal.com.co/wp-content/uploads/2022/10/huevo-x30.png' },
+  { id: '19', nombre: 'Aceite Girasol Premier', categoria: 'Despensa', descripcion: 'Aceite de girasol 1000ml', precio: '$9.200', imagen: 'https://exitocol.vteximg.com.br/arquivos/ids/26660337/Aceite-Premier-1000-ml-13556_a.jpg?v=638739827025100000' },
+  { id: '20', nombre: 'Arroz Diana Premium', categoria: 'Despensa', descripcion: 'Arroz blanco premium 500g', precio: '$2.200', imagen: 'https://olimpica.vtexassets.com/arquivos/ids/866352/7702511000984.jpg?v=637910009116430000' },
+  { id: '21', nombre: 'Jabón Rey en Polvo', categoria: 'Aseo', descripcion: 'Jabón en polvo para ropa 900g', precio: '$8.500', imagen: 'https://ultrex.com.co/wp-content/uploads/2019/06/DETER-POLV-ULTREX-FLORAL-900g.png' },
+  { id: '22', nombre: 'Gaseosa Coca-Cola 1.5L', categoria: 'Bebidas', descripcion: 'Bebida gaseosa 1.5 litros', precio: '$5.200', imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRTtQ46PyRpqInyVRgIwIZTfwP1ETH2xuhUfhPMOfwRjsqv5edbPtB2Zv0&s=10' },
+  { id: '23', nombre: 'Café Sello Rojo Molido', categoria: 'Bebidas', descripcion: 'Café tostado y molido 500g', precio: '$12.400', imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgLTflJvQWAlPgLoRRTcyWMllHcJjMcOnOAjoRbcNwYfqnF9iujr4-nNo&s=10' },
+  { id: '24', nombre: 'Atún Van Camp\'s en Agua', categoria: 'Enlatados', descripcion: 'Atún en agua 170g', precio: '$4.800', imagen: 'https://exitocol.vteximg.com.br/arquivos/ids/37019504/Atun-Lomo-Agua-EXITO-MARCA-PROPIA-170-gr-3259113_a.jpg?v=639298508730870000' },
+  { id: '25', nombre: 'Papel Higiénico Familia', categoria: 'Aseo', descripcion: 'Papel higiénico x 4 rollos', precio: '$7.900', imagen: 'https://exitocol.vtexassets.com/arquivos/ids/34408610/Papel-Acolchamax-Mega-FAMILIA-1184-mts-3373996_a.jpg?v=639211532076300000' },
+  { id: '26', nombre: 'Pasta Dental Colgate', categoria: 'Aseo', descripcion: 'Crema dental Triple Acción 90g', precio: '$6.200', imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRHyrJdA2Vesu44ntTDXojJ5GcrrzrNcsGvPXq2sNN4sg&s=10' },
+  { id: '27', nombre: 'Galletas Festival', categoria: 'Snacks', descripcion: 'Galletas dulces x 12 unidades', precio: '$3.500', imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSlshdMR0bzMW65Tj4RLG11YRiaWaAdVQQ18NfEpC7Wcg&s=10' },
+  { id: '28', nombre: 'Queso Campesino', categoria: 'Lácteos', descripcion: 'Queso campesino fresco 250g', precio: '$6.000', imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSubG9T24b6zBWxI6YETlNR4H_bPrmrhYZ-D_SXdCfe7sawjWsbdGAbeWod&s=10' },
+  { id: '29', nombre: 'Jugo de Naranja Hit', categoria: 'Bebidas', descripcion: 'Jugo de naranja 1000ml', precio: '$4.100', imagen: 'https://exitocol.vtexassets.com/arquivos/ids/34449787/Jugo-De-Naranja-843822_a.jpg?v=639213683788730000' },
+  { id: '30', nombre: 'Limpiavidrios Windex', categoria: 'Aseo', descripcion: 'Limpiador de vidrios 400ml', precio: '$8.900', imagen: 'https://i5.walmartimages.cl/asr/ca49f522-3696-405b-9800-620acae6dc21.f59a84f7360645bfc7d0a9a8f0610891.png?odnHeight=612&odnWidth=612&odnBg=FFFFFF' }
+>>>>>>> Stashed changes
 ];
 
 export default function App() {
